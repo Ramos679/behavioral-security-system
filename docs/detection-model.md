@@ -1,144 +1,162 @@
 # Detection Model
 
-## Baseline Strategy
+## Modeling Choice
 
-Behavior should be modeled at multiple levels because no single baseline is reliable enough on its own.
+The model is built around behavioral transitions, not one-off anomalies. A single unfamiliar event often means nothing. A sequence of unfamiliar events that crosses identity, privilege, resource, and data boundaries is worth an analyst's time.
 
-### Personal Baseline
+The first version can be rules plus statistics. A later version can replace parts of the scoring layer with ML, but the alert still needs to expose the same evidence: what changed, compared with what baseline, under what context.
 
-Tracks what is normal for an individual account:
+## Baselines
 
-- login times
-- locations and networks
-- devices
-- applications
-- repositories
-- file shares
-- database tables
-- cloud accounts
-- privilege usage
-- data movement volume
+### Account Baseline
+
+The account baseline tracks the user's own habits:
+
+- usual login hours and source networks
+- known devices and managed-device rate
+- common applications and repositories
+- normal file shares, tables, buckets, and dashboards
+- typical data export volume
+- usual privilege elevation frequency
 
 ### Peer Baseline
 
-Compares the account with similar users:
+The peer baseline gives the system a fallback when personal history is thin. Peers are grouped by role, team, geography, seniority, employment type, and project membership.
 
-- role
-- team
-- geography
-- seniority
-- employment type
-- project membership
-
-Peer baselines help when an account is new or has sparse history.
+This matters for new hires and transferred employees. A new engineer is not judged only against an empty personal history; their activity is also compared with other engineers on the same project.
 
 ### Resource Baseline
 
-Tracks normal access to the target asset:
+The resource baseline focuses on the asset:
 
-- common users
-- common teams
-- expected actions
-- normal access volume
+- normal user population
+- normal teams and service accounts
+- expected action types
+- normal read and export volume
 - sensitivity class
-- production or non-production status
+- production status
 
-### Temporal Baseline
+This catches cases where a user action is common for the user but strange for the resource, such as a marketing account reading a production deployment repository.
 
-Separates expected work patterns:
+### Time Baseline
 
-- weekday versus weekend
-- working hours versus off-hours
-- local time zone
-- travel period
-- deployment window
-- on-call shift
+The time baseline separates:
 
-## Feature Categories
+- local working hours
+- weekends and holidays
+- on-call periods
+- deployment windows
+- travel periods
 
-Features should be grouped into independent signal families:
+Time is rarely enough to raise an alert by itself. It is useful as a multiplier when the account is also touching new or sensitive assets.
 
-- identity
-- device
-- network
-- resource access
-- privilege
-- data movement
-- collaboration graph
-- business context
+## Features
 
-Independent signal families are important because a suspicious transition is more convincing when different kinds of evidence agree.
+Features are grouped into signal families so one noisy source cannot dominate the case:
+
+- identity: login, MFA, password reset, OAuth grant
+- device: new device, unmanaged device, posture change
+- network: new ASN, impossible travel, risky IP
+- access: first-time system, unusual resource class, broad fan-out
+- privilege: group change, temporary elevation, admin console action
+- data: bulk export, large read, external share, mailbox rule
+- context: ticket, project, travel, role change, on-call
+
+The scorer rewards agreement across families. Three identity quirks are weaker than one identity signal plus one privilege signal plus one sensitive data movement signal.
 
 ## Scoring
 
-A simple scoring model can start with:
+A transparent scoring model is enough for a first implementation:
 
 ```text
 event_risk =
   signal_severity
-  * rarity_against_user
-  * rarity_against_peers
+  * user_rarity
+  * peer_rarity
+  * resource_rarity
   * asset_sensitivity
   * confidence
 
 account_risk =
   decayed_prior_risk
   + event_risk
-  + sequence_risk
-  - legitimate_context_credit
+  + sequence_bonus
+  - scoped_context_credit
 ```
 
-The model should avoid treating context as a complete override. A role change may explain access to a new project repository, but it may not explain unrelated production database exports.
+The important detail is scoped context credit. Context reduces only the part of the risk it actually explains.
 
-## Sequence Correlation
+Example:
 
-The correlator should look for chains such as:
+- Project assignment explains first-time repository access.
+- It does not explain a bulk download from an unrelated production bucket.
+- It does not explain mailbox forwarding to an external address.
 
-- password reset, new device, sensitive resource access
+## Sequence Patterns
+
+High-value patterns include:
+
+- password reset, new device, sensitive access
 - MFA fatigue, successful login, mailbox rule creation
 - first-time repository access, secret search, cloud role assignment
-- unusual database reads, compressed files, external upload
-- contractor nearing end date, access expansion, bulk download
+- unusual warehouse reads, compressed archive, external upload
+- contractor end date approaching, access expansion, bulk download
 
-Sequences should receive higher priority when they include multiple independent signal families.
+Each pattern stores the events that matched it. Analysts need to see the chain, not just the final score.
 
 ## Transition Mode
 
-When the system detects legitimate change, it can place the account in transition mode.
+Legitimate change happens. People join projects, move teams, travel, and take on-call shifts. When context indicates a real transition, the model can enter transition mode for a bounded period.
 
-Transition mode adjusts expectations for a limited period while still preserving guardrails:
+Transition mode changes the guardrails:
 
-- allow access consistent with the new role or project
-- keep sensitivity-based thresholds active
-- watch for unrelated resource access
-- prevent immediate baseline poisoning
-- require confirmation before permanently updating long-term baselines
+- access inside the new project scope becomes less surprising
+- unrelated sensitive systems remain protected by normal thresholds
+- data movement thresholds stay active
+- new behavior is not immediately absorbed into the long-term baseline
+- analyst or manager confirmation can shorten the transition period
+
+This prevents the model from punishing normal job changes while still catching dangerous side effects.
 
 ## False-Positive Controls
 
-Recommended controls:
+The system controls noise through:
 
-- combine personal, peer, and resource baselines
-- require multiple weak signals before escalation
-- decay stale anomalies
-- suppress planned maintenance windows
-- treat approved access differently from unexplained access
-- maintain role-specific thresholds
-- separate human and service account models
-- audit noisy detections regularly
-- collect analyst feedback
+- peer comparison for sparse-history users
+- resource comparison for sensitive assets
+- sequence thresholds for weak signals
+- decay for stale anomalies
+- planned maintenance and deployment calendars
+- scoped business context
+- separate models for humans, admins, executives, contractors, and service accounts
+- recurring review of closed noisy alerts
 
-## High-Value Alert Criteria
+Noise is measured by team and role. A detection that works for finance may be useless for platform engineering.
 
-An alert should be prioritized when it has:
+## Alert Priority
 
-- sensitive asset exposure
-- strong deviation from personal history
+Prioritize an alert when it has several of these traits:
+
+- sensitive or regulated asset exposure
+- strong deviation from account history
 - strong deviation from peer behavior
-- multiple independent signal families
-- rapid behavior change
+- multiple signal families involved
 - privilege expansion
-- missing legitimate context
-- similarity to confirmed incidents
+- rapid behavior change
+- missing or mismatched business context
+- similarity to a confirmed incident pattern
 
-This keeps the queue focused on activity that is both unusual and important.
+The desired outcome is a smaller queue with better evidence, not a bigger queue with more mathematical confidence.
+
+## Known Failure Modes
+
+The design needs guardrails for:
+
+- baseline poisoning by slow attackers
+- incomplete HR or ticketing context
+- shared accounts and service accounts
+- users with seasonal work patterns
+- teams that operate mostly outside standard hours
+- sensitivity labels that are missing or stale
+
+These are not edge cases. Track them as model-quality issues from the first prototype.

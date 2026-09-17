@@ -1,64 +1,62 @@
 # Investigation Playbook
 
-## Alert Triage
+## Triage Questions
 
-Analysts should begin with four questions:
+An alert answers four questions before an analyst opens raw logs:
 
 1. What changed?
-2. Why is it unusual?
-3. Why now?
-4. What legitimate context exists?
+2. Why is that unusual for this account, peer group, or resource?
+3. What happened before and after the change?
+4. What business context explains or fails to explain it?
 
-The system should answer these questions directly in the alert so the analyst does not need to reconstruct the case from raw logs.
+If the alert cannot answer those questions, it is probably not ready for the investigation queue.
 
 ## Review Workflow
 
-1. Confirm the actor, device, source network, and session.
-2. Review the timeline of contributing events.
-3. Compare behavior with personal, peer, and resource baselines.
-4. Check business context such as tickets, project membership, travel, and role changes.
-5. Evaluate asset sensitivity and possible blast radius.
-6. Decide whether containment, owner confirmation, or continued monitoring is appropriate.
-7. Record feedback for model tuning.
+1. Confirm the actor, session, source network, and device.
+2. Read the timeline from first contributing event to latest event.
+3. Compare the behavior with account, peer, resource, time, and privilege baselines.
+4. Check tickets, project membership, HR changes, travel, deployment windows, and on-call schedules.
+5. Review the sensitivity and owner of each affected asset.
+6. Decide whether the next step is monitoring, owner confirmation, user verification, or containment.
+7. Close the alert with a feedback label and a short reason.
 
-## Explanation Requirements
+## Alert Explanation
 
-Each alert should include:
+A strong alert includes:
 
-- plain-language summary
-- ranked risk contributors
-- baseline comparisons
-- timeline of supporting events
-- affected resources
-- sensitivity labels
-- relevant context found
-- context missing
-- recommended next actions
+- a one-paragraph case summary
+- the top risk contributors and their weights
+- baseline comparisons with time windows
+- a timeline of supporting events
+- affected resources and sensitivity labels
+- context matches and context gaps
+- recommended next action
 
-## Example Analyst Summary
+Example:
 
 ```text
-This account became suspicious because it accessed three sensitive engineering resources for the first time within 24 hours, shortly after a login from a new unmanaged device. The user has no project assignment, access ticket, or role change explaining the activity. Two of the accessed resources contain production credentials.
+This account moved into an unusual engineering access pattern within 50 minutes of a new-device login. The user opened a production deployment repository for the first time, searched internal docs for deployment credentials, then downloaded 700 MB from a critical storage path. No matching project assignment, access ticket, travel record, or on-call shift was found.
 ```
 
-## Suggested Response Actions
+## Response Actions
 
-Possible actions should be proportional to risk:
+Response matches the risk and confidence:
 
-- monitor account
-- contact manager or resource owner
-- request user verification
-- revoke temporary elevation
-- invalidate sessions
-- rotate exposed credentials
-- isolate unmanaged device
-- open incident response case
+- Monitor the ledger for more evidence.
+- Ask the resource owner whether the access was expected.
+- Request user verification through an approved channel.
+- Revoke temporary elevation.
+- Invalidate active sessions.
+- Rotate exposed credentials.
+- Isolate an unmanaged or unhealthy device.
+- Open an incident response case.
 
-The system should recommend actions, but high-impact containment should remain human-approved unless the organization has explicit automation policies.
+High-impact containment stays human-approved unless the organization has already documented an automation policy.
 
 ## Feedback Labels
 
-Analyst feedback labels:
+Analysts close alerts with one of these labels:
 
 - true positive
 - benign authorized change
@@ -67,4 +65,17 @@ Analyst feedback labels:
 - duplicate
 - insufficient evidence
 
-Feedback should improve scoring, context resolution, and alert explanations over time.
+The label alone is not enough. A short reason is valuable because it teaches the system which context source, threshold, or signal family needs adjustment.
+
+## Quality Review
+
+Every month, review:
+
+- the highest-volume alert reasons
+- teams with unusual false-positive rates
+- detections closed as expected but undocumented
+- assets with missing sensitivity labels
+- alerts where analysts ignored the recommendation
+- confirmed incidents that the model scored too low
+
+This keeps the system honest. A behavioral detector that is never reviewed will slowly become either noisy or blind.

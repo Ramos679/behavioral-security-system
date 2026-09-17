@@ -3,7 +3,7 @@
   "account_id": "user-4821",
   "priority": "urgent",
   "risk_score": 91,
-  "summary": "Account crossed identity, access, privilege, and data movement boundaries without matching business context.",
+  "summary": "A marketing manager used a new unmanaged device, touched production engineering assets for the first time, searched for deployment credentials, and downloaded data from critical storage without a matching ticket or project assignment.",
   "what_changed": [
     "New unmanaged device used for successful login",
     "First-time access to production deployment repository",

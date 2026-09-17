@@ -1,97 +1,110 @@
 # Behavioral Security System
 
-A system design blueprint for detecting suspicious account behavior by combining user baselines, contextual signals, temporal correlation, and investigator-friendly explanations.
+This repository is a design packet for a UEBA-style account risk system. It starts from a practical SOC problem: an account can look ordinary for weeks, then begin touching just enough unfamiliar systems that no single log line feels worth escalating.
 
-The goal is not to label every unusual event as malicious. The goal is to detect when an account is becoming meaningfully different from its normal operating pattern, especially when that transition touches sensitive systems, privileges, or data.
+The design turns those drift patterns into an explainable case for a human analyst. It uses user baselines, peer comparisons, resource sensitivity, temporal correlation, and business context so the system can separate "new but expected" from "new and risky."
+
+## What This Includes
+
+- A reference architecture for behavioral account monitoring.
+- A scoring model that combines event rarity, asset sensitivity, context, and sequence risk.
+- A playbook for how analysts review and close alerts.
+- Example normalized telemetry and an example alert payload.
+
+This is not production detection code. Treat it as a design brief, architecture proposal, or starting point for a prototype.
 
 ## Problem
 
-Compromised and malicious accounts often begin with ordinary-looking activity. A login from a new device, a first-time file access, or a role change may be low risk on its own. Over time, however, these small changes can form a suspicious pattern:
+Compromised and malicious accounts rarely announce themselves with one perfect signal. A suspicious transition is usually assembled from smaller changes:
 
-- access to unfamiliar systems
-- privilege expansion
-- unusual data movement
-- activity outside normal time or location patterns
-- sensitive resource access without matching business context
+- a new device after a password reset
+- first-time access to a repository or storage bucket
+- unusual searches for secrets or deployment notes
+- temporary privilege elevation
+- bulk reads from a sensitive system
+- activity that does not match a ticket, project, travel record, or role change
 
-Security teams need a system that can connect these signals while controlling false positives.
+The system does not wake an analyst for every unfamiliar action. It escalates when enough evidence shows that an account has moved outside its normal operating lane, especially when the assets involved have real blast radius.
 
-## Design Goals
+## Design Principles
 
-- Establish adaptive baselines for users, peers, resources, and roles.
-- Detect sudden and gradual behavior changes across multiple time windows.
-- Correlate weak signals into stronger behavioral narratives.
-- Incorporate legitimate context such as new projects, role changes, travel, and on-call work.
-- Prioritize alerts by investigation value and potential impact.
-- Explain why an account became suspicious in plain language.
+- Model behavior at several levels: account, peer group, resource, time, and privilege.
+- Score transitions, not just isolated events.
+- Keep context useful but bounded. A new project can explain some access; it does not explain unrelated credential downloads.
+- Delay baseline learning for suspicious activity so an attacker cannot normalize their own behavior too quickly.
+- Produce alerts that say exactly what changed, why it matters, and what the analyst can check next.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    A[Event Sources] --> B[Normalization Layer]
-    B --> C[Feature Store]
-    C --> D[Baseline Models]
-    C --> E[Context Resolver]
-    D --> F[Deviation Scoring]
-    E --> F
-    F --> G[Temporal Correlator]
-    G --> H[Risk Prioritization]
+    A[Identity, Endpoint, SaaS, Cloud, Data Logs] --> B[Normalize Events]
+    B --> C[Enrich With Asset and Business Context]
+    C --> D[Feature Store]
+    D --> E[Baseline Services]
+    D --> F[Sequence Correlator]
+    E --> G[Deviation Scoring]
+    F --> G
+    C --> G
+    G --> H[Account Risk Ledger]
     H --> I[Investigator Workbench]
     I --> J[Analyst Feedback]
-    J --> D
+    J --> E
     J --> H
 ```
 
-## Signal Sources
+## Available Signals
 
-- Identity: SSO, MFA, password resets, session metadata, OAuth grants.
-- Endpoint: device posture, managed state, EDR findings, browser and process telemetry.
-- Access: applications, repositories, files, databases, cloud accounts, SaaS workspaces.
-- Privilege: role assignments, group changes, temporary elevation, admin actions.
+The model expects signals from systems most mid-size security teams already collect:
+
+- Identity: SSO, MFA, password resets, OAuth grants, session metadata.
+- Device and network: managed state, EDR posture, ASN, VPN, impossible travel.
+- Access: applications, repositories, file shares, databases, cloud accounts.
+- Privilege: role assignments, group changes, temporary elevation, admin console use.
 - Data movement: exports, downloads, sharing links, mailbox rules, bulk reads.
-- Business context: HR role changes, tickets, project membership, travel, calendar, on-call rotation.
-- Asset context: sensitivity labels, ownership, production status, regulatory classification.
+- Business context: HR role updates, tickets, project membership, travel, calendar, on-call rotation.
+- Asset context: owner, sensitivity label, production status, regulated data class.
 
-## Core Concept
+## Account Risk Ledger
 
-The system maintains a behavioral risk ledger per account:
+Each account has a small risk ledger that changes over time:
 
 ```text
 account_id
-current_risk_state
+risk_state
 active_anomalies
 supporting_events
 baseline_comparisons
-business_context
+context_matches
+context_gaps
 risk_decay_timer
 analyst_feedback
 ```
 
-Risk increases when independent signals reinforce each other. Risk decays when behavior returns to normal or legitimate context explains the change.
+The ledger is intentionally simple. It gives the correlator somewhere to hold weak evidence until the pattern either fades, gets explained by context, or becomes strong enough for investigation.
 
-## Example
+## Example Transition
 
-A marketing user usually works from Boston and rarely accesses engineering systems.
+A marketing manager normally works from Boston and uses CRM, analytics, and shared drive tools.
 
-Over three days, the account:
+On Thursday morning UTC, the same account:
 
-1. Logs in from a new unmanaged device.
-2. Accesses source control for the first time.
-3. Searches internal docs for deployment credentials.
+1. Signs in from a new unmanaged device.
+2. Opens a production deployment repository for the first time.
+3. Searches internal docs for "deploy key" and "storage credentials."
 4. Receives temporary cloud admin access.
-5. Downloads sensitive storage objects after midnight.
+5. Downloads 700 MB from a critical object storage path.
 
-No single event proves compromise. Together, the account has crossed identity, access, privilege, data, and time-based boundaries without matching project or ticket context. The system escalates the account for investigation and explains the contributing evidence.
+The alert is not "new device equals compromise." The alert is "new device plus first-time engineering access plus secret-oriented search plus privileged bulk download, with no matching ticket or project assignment."
 
 ## Repository Contents
 
-- `docs/architecture.md`: system components and data flow.
-- `docs/detection-model.md`: baselines, scoring, correlation, and false-positive controls.
-- `docs/investigation-playbook.md`: alert review workflow for analysts.
-- `examples/sample-events.jsonl`: representative normalized events.
-- `examples/sample-alert.json`: example investigator-facing alert payload.
+- `docs/architecture.md`: ingestion, enrichment, baseline services, and analyst workflow.
+- `docs/detection-model.md`: scoring logic, transition mode, sequence patterns, and false-positive controls.
+- `docs/investigation-playbook.md`: triage questions, review workflow, response actions, and feedback labels.
+- `examples/sample-events.jsonl`: normalized events for the example transition.
+- `examples/sample-alert.json`: investigator-facing alert payload.
 
-## Status
+## How To Use This
 
-This is a design blueprint, not a production implementation. It can be used as a starting point for a security analytics platform, UEBA prototype, detection engineering proposal, or product requirements document.
+Use the README for a quick demo. Use the docs folder for a deeper walkthrough. The example files are there to show how raw activity becomes an explainable alert rather than a pile of disconnected log entries.
