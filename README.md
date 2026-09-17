@@ -102,6 +102,7 @@ The alert is not "new device equals compromise." The alert is "new device plus f
 - `docs/architecture.md`: ingestion, enrichment, baseline services, and analyst workflow.
 - `docs/detection-model.md`: scoring logic, transition mode, sequence patterns, and false-positive controls.
 - `docs/investigation-playbook.md`: triage questions, review workflow, response actions, and feedback labels.
+- `docs/assumptions-and-tradeoffs.md`: design assumptions, tradeoffs, failure modes, and first-prototype scope.
 - `examples/sample-events.jsonl`: normalized events for the example transition.
 - `examples/sample-alert.json`: investigator-facing alert payload.
 
