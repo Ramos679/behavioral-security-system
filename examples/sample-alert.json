@@ -1,0 +1,54 @@
+{
+  "alert_id": "alert-2026-09-17-0007",
+  "account_id": "user-4821",
+  "priority": "urgent",
+  "risk_score": 91,
+  "summary": "Account crossed identity, access, privilege, and data movement boundaries without matching business context.",
+  "what_changed": [
+    "New unmanaged device used for successful login",
+    "First-time access to production deployment repository",
+    "Search activity related to secrets",
+    "Bulk download from critical object storage"
+  ],
+  "why_unusual": [
+    "No production repository access in prior 180 days",
+    "Peer group rarely accesses cloud storage directly",
+    "Activity occurred outside normal working hours",
+    "Source network differs from the user's normal geography"
+  ],
+  "context_checked": {
+    "role_change": false,
+    "project_assignment": false,
+    "approved_access_ticket": false,
+    "travel_record": false,
+    "on_call_rotation": false
+  },
+  "risk_contributors": [
+    {
+      "signal": "critical_asset_bulk_download",
+      "weight": 35
+    },
+    {
+      "signal": "new_device_login",
+      "weight": 20
+    },
+    {
+      "signal": "first_time_sensitive_repo_access",
+      "weight": 18
+    },
+    {
+      "signal": "secret_related_search",
+      "weight": 12
+    },
+    {
+      "signal": "missing_business_context",
+      "weight": 6
+    }
+  ],
+  "recommended_actions": [
+    "Validate the session with the account owner",
+    "Review temporary privilege grant source",
+    "Check whether downloaded objects contain credentials",
+    "Consider session invalidation and credential rotation"
+  ]
+}
