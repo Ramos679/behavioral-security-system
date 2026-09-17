@@ -10,6 +10,7 @@ The design turns those drift patterns into an explainable case for a human analy
 - A scoring model that combines event rarity, asset sensitivity, context, and sequence risk.
 - A playbook for how analysts review and close alerts.
 - Example normalized telemetry and an example alert payload.
+- A browser prototype that shows the analyst workflow end to end.
 
 This is not production detection code. Treat it as a design brief, architecture proposal, or starting point for a prototype.
 
@@ -99,6 +100,7 @@ The alert is not "new device equals compromise." The alert is "new device plus f
 
 ## Repository Contents
 
+- `prototype/`: runnable browser prototype of the analyst console.
 - `docs/architecture.md`: ingestion, enrichment, baseline services, and analyst workflow.
 - `docs/detection-model.md`: scoring logic, transition mode, sequence patterns, and false-positive controls.
 - `docs/investigation-playbook.md`: triage questions, review workflow, response actions, and feedback labels.
@@ -109,3 +111,17 @@ The alert is not "new device equals compromise." The alert is "new device plus f
 ## How To Use This
 
 Use the README for a quick demo. Use the docs folder for a deeper walkthrough. The example files are there to show how raw activity becomes an explainable alert rather than a pile of disconnected log entries.
+
+## Run The Prototype
+
+Open `prototype/index.html` directly in a browser, or serve the repository locally:
+
+```powershell
+python -m http.server 8000
+```
+
+Then visit:
+
+```text
+http://localhost:8000/prototype/
+```

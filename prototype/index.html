@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Behavioral Security Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">UEBA Prototype</p>
+          <h1>Behavioral Security Console</h1>
+        </div>
+        <div class="topbar-actions" aria-label="Scenario controls">
+          <div class="segmented" role="tablist" aria-label="Scenario">
+            <button class="segment is-active" type="button" data-scenario="suspicious" role="tab" aria-selected="true">Suspicious</button>
+            <button class="segment" type="button" data-scenario="onboarding" role="tab" aria-selected="false">Onboarding</button>
+            <button class="segment" type="button" data-scenario="drift" role="tab" aria-selected="false">Slow Drift</button>
+          </div>
+          <button class="icon-button" type="button" id="recalculateButton" title="Recalculate risk">
+            <span aria-hidden="true">↻</span>
+            <span>Recalculate</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="dashboard" aria-live="polite">
+        <section class="risk-band">
+          <div class="risk-summary">
+            <p class="section-label">Account Under Review</p>
+            <h2 id="accountName">Priya Shah</h2>
+            <p id="accountMeta" class="muted">Marketing Manager · Boston · Human account</p>
+            <div class="status-row">
+              <span id="priorityBadge" class="badge urgent">Urgent</span>
+              <span id="riskState" class="muted">State: investigation queue</span>
+            </div>
+          </div>
+          <div class="risk-meter" aria-label="Risk score">
+            <svg class="meter" viewBox="0 0 120 120" role="img" aria-labelledby="meterTitle">
+              <title id="meterTitle">Current account risk score</title>
+              <circle class="meter-track" cx="60" cy="60" r="48"></circle>
+              <circle id="meterArc" class="meter-arc" cx="60" cy="60" r="48"></circle>
+            </svg>
+            <div class="meter-value">
+              <strong id="riskScore">91</strong>
+              <span>/100</span>
+            </div>
+          </div>
+          <div class="risk-copy">
+            <p class="section-label">Why This Case Opened</p>
+            <p id="caseSummary">New unmanaged device, first-time production repository access, secret-oriented search, temporary admin access, and critical storage download without matching business context.</p>
+          </div>
+        </section>
+
+        <section class="grid metrics-grid" aria-label="Risk metrics">
+          <article class="metric-panel">
+            <span class="metric-label">Signal Families</span>
+            <strong id="familyCount">5</strong>
+            <p class="muted">Independent evidence groups contributing to the case.</p>
+          </article>
+          <article class="metric-panel">
+            <span class="metric-label">Context Matches</span>
+            <strong id="contextMatches">0</strong>
+            <p class="muted">Tickets, travel, role changes, or on-call records found.</p>
+          </article>
+          <article class="metric-panel">
+            <span class="metric-label">Sensitive Assets</span>
+            <strong id="sensitiveAssets">3</strong>
+            <p class="muted">High or critical resources touched in the window.</p>
+          </article>
+          <article class="metric-panel">
+            <span class="metric-label">Window</span>
+            <strong id="caseWindow">50m</strong>
+            <p class="muted">Time between first and latest contributing event.</p>
+          </article>
+        </section>
+
+        <section class="split-layout">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-label">Evidence Timeline</p>
+                <h2>Contributing Events</h2>
+              </div>
+              <span id="eventCount" class="badge neutral">5 events</span>
+            </div>
+            <ol id="timeline" class="timeline"></ol>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-label">Scoring Model</p>
+                <h2>Signal Breakdown</h2>
+              </div>
+              <button class="ghost-button" type="button" id="toggleWeightsButton" title="Toggle score weights">Weights</button>
+            </div>
+            <div id="signals" class="signal-list"></div>
+          </div>
+        </section>
+
+        <section class="split-layout lower">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-label">Baseline Comparison</p>
+                <h2>Current vs Normal</h2>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Behavior</th>
+                    <th>User Norm</th>
+                    <th>Peer Norm</th>
+                    <th>Current Window</th>
+                  </tr>
+                </thead>
+                <tbody id="baselineRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-label">Context Resolver</p>
+                <h2>Matches and Gaps</h2>
+              </div>
+            </div>
+            <div id="contextList" class="context-list"></div>
+          </div>
+        </section>
+
+        <section class="panel explanation-panel">
+          <div class="panel-header">
+            <div>
+              <p class="section-label">Investigator View</p>
+              <h2>Explainable Alert</h2>
+            </div>
+            <button class="icon-button" type="button" id="copyButton" title="Copy analyst summary">
+              <span aria-hidden="true">□</span>
+              <span>Copy Summary</span>
+            </button>
+          </div>
+          <div class="explanation-grid">
+            <div>
+              <h3>What Changed</h3>
+              <ul id="changedList"></ul>
+            </div>
+            <div>
+              <h3>Why It Matters</h3>
+              <p id="whyItMatters"></p>
+            </div>
+            <div>
+              <h3>Recommended Next Step</h3>
+              <p id="nextStep"></p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
